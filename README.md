@@ -91,7 +91,19 @@ if ( -x ~/.local/bin/zsh ) exec ~/.local/bin/zsh
 ./setup.sh --help                # 显示帮助
 ```
 
-可用模块名：`prerequisites` `zsh` `starship` `fzf` `dev_tools` `neovim` `pyenv` `eda_tools` `wezterm_config`
+可用模块名及说明：
+
+| 模块名 | 安装内容 |
+|--------|---------|
+| `prerequisites` | 系统基础编译依赖（apt/yum） |
+| `zsh` | Zsh + autosuggestions / syntax-highlighting / completions 插件 |
+| `starship` | Starship 提示符 + 配置文件 |
+| `fzf` | fzf 模糊搜索 + Ctrl+R / Ctrl+T shell 集成 |
+| `dev_tools` | ripgrep、fd、GitHub CLI (gh)、git 全局配置 |
+| `neovim` | Neovim + LazyVim + Verible LSP + Verilog/SV 插件 |
+| `pyenv` | pyenv + Python 3.12.10 |
+| `eda_tools` | Verible（CentOS）或 Icarus + Verilator + Verible + GTKWave（Ubuntu） |
+| `wezterm_config` | 输出 WezTerm 配置文件的 Windows 安装指引 |
 
 ## 项目结构
 
