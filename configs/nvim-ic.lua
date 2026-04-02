@@ -8,6 +8,25 @@
 --   - 辅助工具：自动对齐、注释插件
 -- ============================================================
 
+-- WSL2 剪贴板配置：使用 win32yank.exe 打通 Neovim 与 Windows 剪贴板
+-- 使 y/d/p 直接操作系统剪贴板，无需手动加 "+
+if vim.fn.has("wsl") == 1 then
+  vim.g.clipboard = {
+    name  = "win32yank",
+    copy  = {
+      ["+"] = "win32yank.exe -i --crlf",
+      ["*"] = "win32yank.exe -i --crlf",
+    },
+    paste = {
+      ["+"] = "win32yank.exe -o --lf",
+      ["*"] = "win32yank.exe -o --lf",
+    },
+    cache_enabled = 0,
+  }
+  -- 所有 yank/delete/paste 默认走系统剪贴板
+  vim.opt.clipboard = "unnamedplus"
+end
+
 return {
 
   -- ============================================================
