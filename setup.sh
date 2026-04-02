@@ -1199,6 +1199,29 @@ main() {
     fi
     echo "  2. 首次运行 nvim 等待 LazyVim 初始化"
     echo "  3. 运行 ./test_setup.sh 验证安装结果"
+
+    # WSL2：提示安装 Nerd Font，否则 Neovim/LazyVim 图标显示乱码
+    if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
+        echo ""
+        echo "================================================================"
+        echo "  ★  Nerd Font 提醒（WSL2 必读）"
+        echo ""
+        echo "  Neovim / LazyVim 使用 Nerd Font 图标字符（如  ）。"
+        echo "  若 Windows Terminal 未安装对应字体，图标将显示为方框或乱码。"
+        echo ""
+        echo "  推荐字体：JetBrainsMono Nerd Font"
+        echo ""
+        echo "  自动安装（推荐）："
+        echo "    在 Windows 侧运行 windows_env_setup 项目的 setup.py"
+        echo "    python setup.py     # 包含自动下载并安装 Nerd Font"
+        echo ""
+        echo "  手动安装："
+        echo "    https://github.com/ryanoasis/nerd-fonts/releases"
+        echo "    → 下载 JetBrainsMono.zip，解压后右键字体文件 → 为所有用户安装"
+        echo "    → Windows Terminal 设置 > 配置文件 > 默认值 > 外观 > 字体"
+        echo "      选择 JetBrainsMono Nerd Font"
+        echo "================================================================"
+    fi
     echo "=================================================="
 }
 
