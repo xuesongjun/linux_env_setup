@@ -151,28 +151,49 @@ return {
         verilog = { "verible_verilog_lint" },
         systemverilog = { "verible_verilog_lint" },
       },
-      linters = {
-        verible_verilog_lint = {
-          cmd = "verible-verilog-lint",
-          args = {
-            "--ruleset=default",
-            "--rules=-line-length",   -- 行长由 format 控制，lint 不重复检查
-          },
-          stream = "stdout",
-          ignore_exitcode = true,
-          -- Verible lint 输出格式：filename:line:col: severity: message
-          parser = require("lint.parser").from_pattern(
-            "([^:]+):(%d+):(%d+):%s+([%w-]+):%s+(.*)",
-            { "file", "lnum", "col", "severity", "message" },
-            {
-              ["error"]   = vim.diagnostic.severity.ERROR,
-              ["warning"] = vim.diagnostic.severity.WARN,
-            },
-            { source = "verible-lint" }
-          ),
-        },
-      },
     },
+    config = function(_, opts)
+      local lint = require("lint")
+
+      -- 自定义 verible-verilog-lint linter
+      -- 输出格式：filename:line:col: message [rule-name]
+      lint.linters.verible_verilog_lint = {
+        cmd = "verible-verilog-lint",
+        args = {
+          "--ruleset=default",
+          "--rules=-line-length",   -- 行长由 format 控制，lint 不重复检查
+        },
+        stream = "stdout",
+        ignore_exitcode = true,
+        parser = function(output, _)
+          local diagnostics = {}
+          for line in output:gmatch("[^\n]+") do
+            -- 格式：filename:lnum:col: message [rule]
+            local lnum, col, msg = line:match(":(%d+):(%d+):%s+(.+)$")
+            if lnum then
+              table.insert(diagnostics, {
+                lnum     = tonumber(lnum) - 1,  -- nvim 行号从 0 开始
+                col      = tonumber(col) - 1,
+                message  = msg,
+                severity = vim.diagnostic.severity.WARN,
+                source   = "verible-lint",
+              })
+            end
+          end
+          return diagnostics
+        end,
+      }
+
+      lint.linters_by_ft = vim.tbl_deep_extend("force",
+        lint.linters_by_ft or {}, opts.linters_by_ft or {})
+
+      -- 保存时自动触发 lint
+      vim.api.nvim_create_autocmd({ "BufWritePost", "BufReadPost" }, {
+        callback = function()
+          lint.try_lint()
+        end,
+      })
+    end,
   },
 
   -- ============================================================
