@@ -79,7 +79,11 @@ detect_env() {
     fi
 
     # ---- sudo 权限 ----
+    # 先用非交互模式试（无密码 sudo），失败时检查用户所在组
     if sudo -n true 2>/dev/null; then
+        HAS_SUDO=true
+    elif groups 2>/dev/null | grep -qE '\b(sudo|wheel|admin)\b'; then
+        # 用户在 sudo 组，只是需要输入密码
         HAS_SUDO=true
     fi
 
