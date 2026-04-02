@@ -207,7 +207,9 @@ clone_or_extract() {
         mv "$tmp_extract/$extracted_name" "$dest"
         rm -rf "$tmp_extract"
     else
-        git clone --depth=1 "$url" "$dest"
+        # GIT_TERMINAL_PROMPT=0：禁止 git 等待用户输入（避免卡住）
+        # timeout 120：网络超时保护
+        GIT_TERMINAL_PROMPT=0 timeout 120 git clone --depth=1 "$url" "$dest"
     fi
 }
 
@@ -390,7 +392,7 @@ setup_zsh() {
         url="${plugins[$name]}"
         if [[ -d "$plugin_dir/$name" ]]; then
             if [[ "$IS_OFFLINE" == "false" ]]; then
-                git -C "$plugin_dir/$name" pull --ff-only 2>/dev/null \
+                timeout 30 git -C "$plugin_dir/$name" pull --ff-only 2>/dev/null \
                     || log_warn "$name 更新失败，保留现有版本"
             else
                 log_ok "插件已存在（离线模式跳过更新）：$name"
@@ -536,7 +538,7 @@ setup_fzf() {
     else
         # 在线：克隆仓库安装
         if [[ -d "$HOME/.fzf" ]]; then
-            git -C "$HOME/.fzf" pull --ff-only 2>/dev/null \
+            timeout 30 git -C "$HOME/.fzf" pull --ff-only 2>/dev/null \
                 || log_warn "fzf 更新失败，保留现有版本"
         else
             git clone --depth=1 https://github.com/junegunn/fzf.git "$HOME/.fzf" || {
@@ -885,7 +887,7 @@ setup_pyenv() {
     # ---- 安装 pyenv 本身 ----
     if [[ -d "$HOME/.pyenv" ]]; then
         if [[ "$IS_OFFLINE" == "false" ]]; then
-            git -C "$HOME/.pyenv" pull --ff-only 2>/dev/null \
+            timeout 30 git -C "$HOME/.pyenv" pull --ff-only 2>/dev/null \
                 || log_warn "pyenv 更新失败，保留现有版本"
         else
             log_ok "pyenv 已存在（离线模式跳过更新）"
