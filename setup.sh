@@ -235,6 +235,18 @@ setup_prerequisites() {
     if [[ "$OS_TYPE" == "ubuntu" ]] && [[ "$HAS_SUDO" == "true" ]]; then
         sudo apt-get update -y
         sudo apt-get upgrade -y
+
+        # 生成 en_US.UTF-8 locale（WSL2 默认未生成，导致 setlocale 警告）
+        if ! locale -a 2>/dev/null | grep -q "en_US.utf8"; then
+            log_step "生成 en_US.UTF-8 locale..."
+            sudo apt-get install -y locales
+            sudo locale-gen en_US.UTF-8
+            sudo update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+            log_ok "locale 生成完成"
+        else
+            log_ok "en_US.UTF-8 locale 已存在"
+        fi
+
         local packages=(
             git curl wget build-essential pkg-config
             libssl-dev zlib1g-dev libbz2-dev libreadline-dev
@@ -944,6 +956,28 @@ setup_wezterm_config() {
     if [[ "$OS_TYPE" == "centos" ]]; then
         log_warn "CentOS 服务器模式：跳过 WezTerm 配置（在本地 WSL2 上配置）"
         return 0
+    fi
+
+    # WSL2 镜像网络提示（解决 localhost 代理无法访问的问题）
+    if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
+        local wslconfig
+        wslconfig=$(wslpath -u "$(wslvar USERPROFILE 2>/dev/null)/.wslconfig" 2>/dev/null \
+            || echo "/mnt/c/Users/${USER}/.wslconfig")
+        if ! grep -q "networkingMode=mirrored" "$wslconfig" 2>/dev/null; then
+            echo ""
+            echo "  ┌─ WSL2 代理提示 ──────────────────────────────────────────┐"
+            echo "  │ 检测到 WSL2 NAT 模式，localhost 代理（如 Clash）无法直接使用 │"
+            echo "  │ 在 Windows PowerShell 中执行以下命令开启镜像网络模式：      │"
+            echo "  │                                                            │"
+            echo "  │   Add-Content \$env:USERPROFILE\\.wslconfig \`              │"
+            echo "  │     \"[wsl2]\`nnetworkingMode=mirrored\"                     │"
+            echo "  │   wsl --shutdown                                           │"
+            echo "  │                                                            │"
+            echo "  │ 重启 WSL 后 localhost:7897 即可直接使用。                  │"
+            echo "  └────────────────────────────────────────────────────────────┘"
+        else
+            log_ok "WSL2 已配置镜像网络模式"
+        fi
     fi
 
     local wezterm_src="$CONFIGS_DIR/wezterm.lua"
