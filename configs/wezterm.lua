@@ -117,7 +117,13 @@ config.keys = {
 -- 鼠标行为
 -- ============================================================
 config.mouse_bindings = {
-  -- 右键粘贴
+  -- 中键粘贴（Linux 传统：选中即复制到 PrimarySelection，中键粘贴）
+  {
+    event  = { Down = { streak = 1, button = "Middle" } },
+    mods   = "NONE",
+    action = act.PasteFrom("PrimarySelection"),
+  },
+  -- 右键粘贴（同上，兼容无中键鼠标）
   {
     event  = { Down = { streak = 1, button = "Right" } },
     mods   = "NONE",
