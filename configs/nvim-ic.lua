@@ -50,7 +50,7 @@ return {
   -- 2. Mason：自动安装 LSP / 格式化工具
   -- ============================================================
   {
-    "williamboman/mason.nvim",
+    "mason-org/mason.nvim",
     opts = function(_, opts)
       -- mason-lspconfig 管理的 LSP 服务器
       vim.list_extend(opts.ensure_installed or {}, {
@@ -237,9 +237,10 @@ return {
   -- ============================================================
   {
     "echasnovski/mini.align",
+    name  = "mini.align",    -- 显式指定 name，避免与 LazyVim 内部命名冲突
     event = "VeryLazy",
-    opts = {},
-    keys = {
+    opts  = {},
+    keys  = {
       { "ga", mode = { "n", "v" }, desc = "Align (mini.align)" },
       { "gA", mode = { "n", "v" }, desc = "Align with preview" },
     },
