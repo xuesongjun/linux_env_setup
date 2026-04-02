@@ -1128,6 +1128,20 @@ main() {
 
     detect_env
 
+    # 代理可达性检查：若代理设置了但实际连不上，安装期间临时禁用
+    # 避免 apt-get / curl 等工具因代理不可用而卡住
+    if [[ -n "${HTTP_PROXY:-}" ]]; then
+        local proxy_host proxy_port
+        proxy_host=$(echo "$HTTP_PROXY" | sed 's|https\?://||' | cut -d: -f1)
+        proxy_port=$(echo "$HTTP_PROXY" | sed 's|https\?://||' | cut -d: -f2 | cut -d/ -f1)
+        if timeout 3 bash -c ">/dev/tcp/$proxy_host/$proxy_port" 2>/dev/null; then
+            log_ok "代理可用：$HTTP_PROXY"
+        else
+            log_warn "代理 $HTTP_PROXY 无法连接，安装期间临时禁用代理（使用直连）"
+            unset HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy
+        fi
+    fi
+
     # sudo 凭据缓存：提前验证一次，后台每 60 秒刷新，避免安装中途反复问密码
     if [[ "$HAS_SUDO" == "true" ]]; then
         log_step "请输入 sudo 密码（整个安装过程只需输入一次）..."
