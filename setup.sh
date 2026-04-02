@@ -802,6 +802,23 @@ setup_pyenv() {
     if pyenv versions 2>/dev/null | grep -q "$PYTHON_VERSION"; then
         log_ok "Python $PYTHON_VERSION 已安装"
     else
+        # 在线模式：提前用 curl 下载到 pyenv cache，显示进度条
+        # pyenv install 检测到 cache 中有文件时直接跳过下载
+        if [[ "$IS_OFFLINE" == "false" ]]; then
+            local cache_dir="$HOME/.pyenv/cache"
+            local cache_file="$cache_dir/Python-${PYTHON_VERSION}.tar.xz"
+            mkdir -p "$cache_dir"
+            if [[ ! -f "$cache_file" ]]; then
+                log_step "下载 Python ${PYTHON_VERSION}（显示进度）..."
+                curl -fL --progress-bar \
+                    -o "$cache_file" \
+                    "https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tar.xz" \
+                    || { log_warn "预下载失败，交由 pyenv 重试"; rm -f "$cache_file"; }
+            else
+                log_ok "Python 源码包已在 cache，跳过下载"
+            fi
+        fi
+
         log_step "编译安装 Python ${PYTHON_VERSION}（需要几分钟）..."
         pyenv install "$PYTHON_VERSION" || { log_err "Python 安装失败"; return 1; }
     fi
