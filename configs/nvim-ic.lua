@@ -236,8 +236,8 @@ return {
   -- 7. 对齐插件（IC 代码常见对齐需求）
   -- ============================================================
   {
-    "echasnovski/mini.align",
-    name  = "mini.align",    -- 显式指定 name，避免与 LazyVim 内部命名冲突
+    "nvim-mini/mini.align",
+    name  = "mini.align",
     event = "VeryLazy",
     opts  = {},
     keys  = {
