@@ -3,6 +3,10 @@
 plan.md
 research.md
 
+# bundle_prepare.sh 生成的离线安装包（体积大，不提交）
+bundle/
+linux_env_setup_bundle_*.tar.gz
+
 # IDE
 .vscode/
 .idea/

@@ -18,6 +18,23 @@ PASS=0
 FAIL=0
 WARN=0
 
+# 探测当前环境（与 setup.sh 逻辑一致）
+_detect_os() {
+    if [[ -f /etc/os-release ]]; then
+        local id
+        id=$(. /etc/os-release && echo "${ID:-unknown}")
+        case "$id" in
+            ubuntu|debian)                      echo "ubuntu" ;;
+            centos|rhel|rocky|almalinux|fedora) echo "centos" ;;
+            *)                                  echo "unknown" ;;
+        esac
+    else
+        echo "unknown"
+    fi
+}
+
+CURRENT_OS=$(_detect_os)
+
 # ============================================================
 # 辅助函数
 # ============================================================
@@ -175,23 +192,7 @@ check_eda_tools() {
     echo ""
     echo "─── EDA 工具 ────────────────────────────────────────"
 
-    # Icarus Verilog
-    if command -v iverilog &>/dev/null; then
-        local ver
-        ver=$(iverilog -V 2>&1 | head -1)
-        pass "Icarus Verilog (iverilog)" "$ver"
-    else
-        fail "Icarus Verilog 未安装"
-    fi
-
-    # Verilator
-    if command -v verilator &>/dev/null; then
-        pass "Verilator" "$(verilator --version 2>&1)"
-    else
-        fail "Verilator 未安装"
-    fi
-
-    # Verible
+    # Verible（所有平台必检）
     local verible_bins=("verible-verilog-lint" "verible-verilog-format" "verible-verilog-ls")
     local verible_ok=true
     local vb
@@ -210,16 +211,76 @@ check_eda_tools() {
         fail "Verible 未完整安装" "检查 ~/.local/bin/ 中是否有 verible-verilog-* 文件"
     fi
 
-    # GTKWave
+    # CentOS 服务器：只需要 Verible，其余跳过
+    if [[ "$CURRENT_OS" == "centos" ]]; then
+        warn "CentOS 模式：iverilog / Verilator / GTKWave 由服务器管理员提供，跳过检查"
+        return 0
+    fi
+
+    # Ubuntu：完整 EDA 工具检查
+    if command -v iverilog &>/dev/null; then
+        local ver
+        ver=$(iverilog -V 2>&1 | head -1)
+        pass "Icarus Verilog" "$ver"
+    else
+        fail "Icarus Verilog 未安装"
+    fi
+
+    if command -v verilator &>/dev/null; then
+        pass "Verilator" "$(verilator --version 2>&1)"
+    else
+        fail "Verilator 未安装"
+    fi
+
     if command -v gtkwave &>/dev/null; then
         pass "GTKWave" "$(gtkwave --version 2>&1 | head -1)"
+    elif [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
+        warn "GTKWave 未安装（WSL2 需要 WSLg / Windows 11）"
     else
-        # WSL2 中 GTKWave 需要 WSLg 支持
-        if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
-            warn "GTKWave 未安装（WSL2 环境需要 WSLg / Windows 11 支持 GUI）"
+        fail "GTKWave 未安装"
+    fi
+}
+
+check_centos_specific() {
+    [[ "$CURRENT_OS" != "centos" ]] && return 0
+
+    echo ""
+    echo "─── CentOS 特定检查 ─────────────────────────────────"
+
+    # zsh 安装位置（可能在 ~/.local/bin/）
+    if command -v zsh &>/dev/null; then
+        pass "zsh 可用" "$(zsh --version 2>&1)"
+    elif [[ -x "$HOME/.local/bin/zsh" ]]; then
+        pass "zsh 已编译安装" "$HOME/.local/bin/zsh"
+    else
+        fail "zsh 未安装（CentOS 下需从源码编译）"
+    fi
+
+    # csh → zsh 切换配置
+    local csh_config
+    if [[ -f "$HOME/.tcshrc" ]]; then
+        csh_config="$HOME/.tcshrc"
+    elif [[ -f "$HOME/.cshrc" ]]; then
+        csh_config="$HOME/.cshrc"
+    else
+        csh_config=""
+    fi
+
+    if [[ -n "$csh_config" ]]; then
+        if grep -q "linux_env_setup: switch to zsh" "$csh_config" 2>/dev/null; then
+            pass "csh → zsh 切换已配置" "$csh_config"
         else
-            fail "GTKWave 未安装"
+            warn "csh 配置文件未设置 zsh 切换（$csh_config）"
         fi
+    else
+        warn "未找到 .cshrc / .tcshrc（登录 shell 可能不是 csh）"
+    fi
+
+    # ~/.local/bin 在 PATH 中
+    if [[ ":$PATH:" == *":$HOME/.local/bin:"* ]]; then
+        pass "~/.local/bin 在 PATH 中"
+    else
+        warn "~/.local/bin 不在当前 PATH（重新登录后生效）"
     fi
 }
 
@@ -270,14 +331,19 @@ main() {
     echo "=================================================="
     echo ""
 
+    echo "  当前系统：$CURRENT_OS"
+    echo ""
+
     check_shell
     check_prompt
     check_search_tools
     check_neovim
     check_python
     check_eda_tools
+    check_centos_specific
     check_paths
-    check_wezterm_config
+    # WezTerm 仅在 Ubuntu/WSL2 有意义
+    [[ "$CURRENT_OS" != "centos" ]] && check_wezterm_config
 
     # ---- 汇总 ----
     echo ""
