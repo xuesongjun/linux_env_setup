@@ -3,6 +3,13 @@
 # 由 linux_env_setup/setup.sh 安装，可手动编辑
 # ============================================================
 
+# ---- WSL2 启动目录修正 ----
+# 从 Windows 侧（如 PowerShell）启动 WSL 时，默认落在 /mnt/c/...
+# Windows 文件系统在 WSL 内读写极慢，自动跳转到 Linux home
+if [[ -n "${WSL_DISTRO_NAME:-}" && "$PWD" == /mnt/* ]]; then
+    cd ~
+fi
+
 # ---- 基础环境变量 ----
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
