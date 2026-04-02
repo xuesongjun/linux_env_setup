@@ -819,8 +819,11 @@ setup_pyenv() {
             fi
         fi
 
-        log_step "编译安装 Python ${PYTHON_VERSION}（需要几分钟）..."
-        pyenv install "$PYTHON_VERSION" || { log_err "Python 安装失败"; return 1; }
+        log_step "编译安装 Python ${PYTHON_VERSION}（需要几分钟，显示编译过程）..."
+        # -v 显示编译过程，让用户看到进度而非干等
+        pyenv install -v "$PYTHON_VERSION" 2>&1 \
+            | grep --line-buffered -E '^\+\+? |checking |make\[|gcc|clang|error:' \
+            || { log_err "Python 安装失败"; return 1; }
     fi
 
     pyenv global "$PYTHON_VERSION"
@@ -999,6 +1002,17 @@ main() {
     echo "=================================================="
 
     detect_env
+
+    # sudo 凭据缓存：提前验证一次，后台每 60 秒刷新，避免安装中途反复问密码
+    if [[ "$HAS_SUDO" == "true" ]]; then
+        log_step "请输入 sudo 密码（整个安装过程只需输入一次）..."
+        sudo -v
+        # 后台保活：每 60 秒刷新 sudo 时间戳，直到脚本退出
+        ( while kill -0 $$ 2>/dev/null; do sudo -n -v 2>/dev/null; sleep 60; done ) &
+        local sudo_keepalive_pid=$!
+        # 脚本退出时结束后台保活进程
+        trap "kill $sudo_keepalive_pid 2>/dev/null; exit" INT TERM EXIT
+    fi
 
     # 离线模式检查 bundle 目录
     if [[ "$IS_OFFLINE" == "true" ]] && [[ ! -d "$BUNDLE_DIR" ]]; then
