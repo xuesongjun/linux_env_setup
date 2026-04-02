@@ -208,8 +208,8 @@ clone_or_extract() {
         rm -rf "$tmp_extract"
     else
         # GIT_TERMINAL_PROMPT=0：禁止 git 等待用户输入（避免卡住）
-        # timeout 120：网络超时保护
-        GIT_TERMINAL_PROMPT=0 timeout 120 git clone --depth=1 "$url" "$dest"
+        # timeout --foreground：确保 Ctrl+C 可以中断子进程
+        GIT_TERMINAL_PROMPT=0 timeout --foreground 30 git clone --depth=1 "$url" "$dest"
     fi
 }
 
