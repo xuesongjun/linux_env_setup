@@ -157,7 +157,7 @@ FTP 取包 → 解压 → 进目录 → `./setup.sh --offline`
 | 常量 | 当前值 |
 |------|--------|
 | `PYTHON_VERSION` | 3.12.10 |
-| `NEOVIM_VERSION` | 0.10.4 |
+| `NVIM_MIN_VERSION` | 0.11.2（LazyVim 最低要求；在线模式自动装最新稳定版）|
 | `VERIBLE_VERSION` | 0.0-3793-g4294133e |
 | `ZSH_VERSION_SRC` | 5.9 |
 | `FZF_VERSION` | 0.62.0 |

@@ -25,7 +25,7 @@ readonly BUNDLE_DIR="$SCRIPT_DIR/bundle"
 # 版本常量（与 setup.sh 保持一致）
 # ============================================================
 readonly PYTHON_VERSION="3.12.10"
-readonly NEOVIM_VERSION="0.10.4"
+# Neovim：打包时自动查询最新稳定版本号
 readonly VERIBLE_VERSION="0.0-3793-g4294133e"
 readonly ZSH_VERSION="5.9"
 readonly FZF_VERSION="0.62.0"
@@ -125,15 +125,23 @@ download_binaries() {
         log_ok "已存在：$starship_pkg"
     fi
 
-    # ---- Neovim AppImage ----
+    # ---- Neovim AppImage（始终下载最新稳定版）----
     local nvim_pkg="nvim-linux-x86_64.appimage"
+    # 通过 stable tag redirect 获取实际版本号，记录到 VERSIONS 文件
+    local nvim_latest_ver=""
+    nvim_latest_ver=$(curl -fsSI \
+        "https://github.com/neovim/neovim/releases/download/stable/$nvim_pkg" \
+        2>/dev/null | grep -i "^location:" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1 \
+        || echo "stable")
     if [[ ! -f "$BUNDLE_DIR/$nvim_pkg" ]]; then
         download \
-            "https://github.com/neovim/neovim/releases/download/v${NEOVIM_VERSION}/${nvim_pkg}" \
+            "https://github.com/neovim/neovim/releases/download/stable/$nvim_pkg" \
             "$BUNDLE_DIR/$nvim_pkg"
     else
-        log_ok "已存在：$nvim_pkg"
+        log_ok "已存在：$nvim_pkg（$nvim_latest_ver）"
     fi
+    # 记录版本到 VERSIONS 文件，供 setup.sh 离线版本检查使用
+    echo "NEOVIM_VERSION=${nvim_latest_ver}" >> "$BUNDLE_DIR/VERSIONS"
 
     # ---- fzf ----
     local fzf_pkg="fzf-${FZF_VERSION}-linux_amd64.tar.gz"

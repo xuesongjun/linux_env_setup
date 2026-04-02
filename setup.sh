@@ -17,7 +17,7 @@ set -euo pipefail
 # 版本常量（所有版本号统一在此定义）
 # ============================================================
 readonly PYTHON_VERSION="3.12.10"
-readonly NEOVIM_VERSION="0.10.4"
+readonly NVIM_MIN_VERSION="0.11.2"   # LazyVim 最低要求；在线模式自动装最新稳定版
 readonly VERIBLE_VERSION="0.0-3793-g4294133e"
 readonly ZSH_VERSION_SRC="5.9"
 readonly GH_VERSION="2.62.0"
@@ -208,6 +208,17 @@ clone_or_extract() {
     else
         git clone --depth=1 "$url" "$dest"
     fi
+}
+
+# 版本号比较：$1 >= $2 时返回 0
+_version_gte() {
+    printf '%s\n%s\n' "$2" "$1" | sort -V -C
+}
+
+# 从已安装的 nvim 提取版本号（如 "0.11.2"）
+_nvim_installed_version() {
+    local bin="$1"
+    "$bin" --version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+'
 }
 
 should_run() {
@@ -637,10 +648,24 @@ setup_neovim() {
     mkdir -p "$HOME/.local/bin"
 
     # ---- 安装 Neovim 二进制 ----
-    if [[ -x "$nvim_bin" ]] && "$nvim_bin" --version 2>/dev/null | grep -q "$NEOVIM_VERSION"; then
-        log_ok "Neovim $NEOVIM_VERSION 已安装"
-    else
-        local nvim_url="https://github.com/neovim/neovim/releases/download/v${NEOVIM_VERSION}/nvim-linux-x86_64.appimage"
+    # 在线模式：始终下载最新稳定版（stable tag）
+    # 版本检查：已安装版本满足最低要求（>= NVIM_MIN_VERSION）则跳过
+    local need_install=true
+    if [[ -x "$nvim_bin" ]]; then
+        local installed_ver
+        installed_ver=$(_nvim_installed_version "$nvim_bin")
+        if _version_gte "$installed_ver" "$NVIM_MIN_VERSION"; then
+            log_ok "Neovim $installed_ver 已安装（满足 >= $NVIM_MIN_VERSION）"
+            need_install=false
+        else
+            log_warn "Neovim $installed_ver 版本过旧（需要 >= $NVIM_MIN_VERSION），升级..."
+        fi
+    fi
+
+    if [[ "$need_install" == "true" ]]; then
+        # 在线：stable tag 始终指向最新稳定版，无需写死版本号
+        # 离线：从 bundle/ 读取打包时的 AppImage
+        local nvim_url="https://github.com/neovim/neovim/releases/download/stable/nvim-linux-x86_64.appimage"
         local tmp_appimage
         tmp_appimage=$(mktemp --suffix=.appimage)
 
@@ -667,7 +692,9 @@ setup_neovim() {
             fi
             ln -sf "$nvim_extracted" "$nvim_bin"
         fi
-        log_ok "Neovim v${NEOVIM_VERSION} 安装完成"
+        local new_ver
+        new_ver=$(_nvim_installed_version "$nvim_bin" 2>/dev/null || echo "unknown")
+        log_ok "Neovim v${new_ver} 安装完成"
     fi
 
     # ---- 安装 Node.js（LSP 依赖，仅 Ubuntu 且有 sudo 时通过包管理器）----
