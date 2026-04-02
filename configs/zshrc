@@ -1,0 +1,114 @@
+# ============================================================
+# ~/.zshrc — Zsh 配置文件
+# 由 linux_env_setup/setup.sh 安装，可手动编辑
+# ============================================================
+
+# ---- 基础环境变量 ----
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+export EDITOR=nvim
+export VISUAL=nvim
+
+# ~/.local/bin 优先（pyenv、nvim、verible 等安装在此）
+export PATH="$HOME/.local/bin:$PATH"
+
+# ---- pyenv ----
+export PYENV_ROOT="$HOME/.pyenv"
+if [[ -d "$PYENV_ROOT" ]]; then
+    export PATH="$PYENV_ROOT/bin:$PATH"
+    eval "$(pyenv init -)"
+fi
+
+# ---- fzf ----
+if [[ -f "$HOME/.fzf.zsh" ]]; then
+    source "$HOME/.fzf.zsh"
+fi
+# fzf 默认选项：使用 fd 作为文件查找后端（更快，自动忽略 .gitignore）
+if command -v fd &>/dev/null || command -v fdfind &>/dev/null; then
+    local _fd_cmd
+    _fd_cmd=$(command -v fd 2>/dev/null || command -v fdfind)
+    export FZF_DEFAULT_COMMAND="$_fd_cmd --type f --hidden --follow --exclude .git"
+    export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+    export FZF_ALT_C_COMMAND="$_fd_cmd --type d --hidden --follow --exclude .git"
+fi
+# fzf 界面配置
+export FZF_DEFAULT_OPTS="--height=50% --layout=reverse --border --info=inline"
+
+# ---- Zsh 插件（不依赖 Oh My Zsh）----
+local plugin_dir="$HOME/.zsh"
+
+# zsh-completions（需在 compinit 前加入 fpath）
+if [[ -d "$plugin_dir/zsh-completions/src" ]]; then
+    fpath=("$plugin_dir/zsh-completions/src" $fpath)
+fi
+
+# 初始化补全系统
+autoload -Uz compinit && compinit
+
+# zsh-autosuggestions：历史建议（→ 键接受）
+if [[ -f "$plugin_dir/zsh-autosuggestions/zsh-autosuggestions.zsh" ]]; then
+    source "$plugin_dir/zsh-autosuggestions/zsh-autosuggestions.zsh"
+    ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=8"
+    ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+fi
+
+# zsh-syntax-highlighting（必须放最后加载）
+if [[ -f "$plugin_dir/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]]; then
+    source "$plugin_dir/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+fi
+
+# ---- Starship 提示符 ----
+if command -v starship &>/dev/null; then
+    eval "$(starship init zsh)"
+fi
+
+# ---- Zsh 选项 ----
+setopt AUTO_CD           # 输入目录名自动 cd
+setopt HIST_IGNORE_DUPS  # 历史记录忽略重复
+setopt HIST_IGNORE_SPACE # 以空格开头的命令不记录历史（密码等）
+setopt SHARE_HISTORY     # 多终端共享历史
+setopt CORRECT           # 命令纠错提示
+
+HISTSIZE=50000
+SAVEHIST=50000
+HISTFILE="$HOME/.zsh_history"
+
+# ---- 通用别名 ----
+alias ll='ls -lhF --color=auto'
+alias la='ls -lahF --color=auto'
+alias l='ls -1F --color=auto'
+alias grep='grep --color=auto'
+alias diff='diff --color=auto'
+
+# 编辑器别名
+alias vi='nvim'
+alias vim='nvim'
+
+# 目录导航
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+
+# ripgrep 别名（语义化搜索）
+alias rgl='rg -l'       # 只显示文件名
+alias rgn='rg -n'       # 显示行号
+
+# ---- IC / EDA 工具路径 ----
+# Verilator（源码安装时在 ~/.local）
+if [[ -d "$HOME/.local/share/verilator" ]]; then
+    export VERILATOR_ROOT="$HOME/.local/share/verilator"
+fi
+
+# Verible 工具（已在 ~/.local/bin，无需额外配置）
+
+# ---- WSL2 特定配置 ----
+# 将 Windows 侧剪贴板集成到 Zsh（需要 clip.exe）
+if command -v clip.exe &>/dev/null; then
+    alias pbcopy='clip.exe'
+    # 粘贴：PowerShell Get-Clipboard 通过管道传入
+    alias pbpaste='powershell.exe -command "Get-Clipboard" 2>/dev/null | sed "s/\r//"'
+fi
+
+# ---- 本地自定义（不被 setup.sh 覆盖）----
+# 请将个人自定义写在 ~/.zshrc.local 中
+[[ -f "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"
