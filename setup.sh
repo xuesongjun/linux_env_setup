@@ -21,6 +21,7 @@ readonly NVIM_MIN_VERSION="0.11.2"   # LazyVim 最低要求；在线模式自动
 readonly VERIBLE_VERSION="0.0-3793-g4294133e"
 readonly ZSH_VERSION_SRC="5.9"
 readonly GH_VERSION="2.62.0"
+readonly NVM_VERSION="0.40.3"        # nvm 版本，用于安装最新 LTS Node.js
 
 # ============================================================
 # 路径常量（基于脚本所在目录，支持从任意目录调用）
@@ -244,7 +245,12 @@ setup_prerequisites() {
     log_step "模块 1/9：基础依赖..."
 
     if [[ "$OS_TYPE" == "ubuntu" ]] && [[ "$HAS_SUDO" == "true" ]]; then
-        sudo apt-get update -y
+        # 超时 10 秒/源，避免单个慢源（如 nodesource）卡住整个 update
+        sudo apt-get update -y \
+            -o Acquire::http::Timeout=10 \
+            -o Acquire::https::Timeout=10 \
+            -o APT::Update::Error-Mode=any \
+            || log_warn "apt-get update 部分源失败，继续安装"
         sudo apt-get upgrade -y
 
         # 生成 en_US.UTF-8 locale（WSL2 默认未生成，导致 setlocale 警告）
@@ -720,22 +726,49 @@ setup_neovim() {
         log_ok "Neovim v${new_ver} 安装完成"
     fi
 
-    # ---- 安装 Node.js（LSP 依赖，仅 Ubuntu 且有 sudo 时通过包管理器）----
-    if ! check_cmd node; then
-        if [[ "$OS_TYPE" == "ubuntu" ]] && [[ "$HAS_SUDO" == "true" ]] && [[ "$IS_OFFLINE" == "false" ]]; then
-            log_step "安装 Node.js..."
-            local node_setup
-            node_setup=$(mktemp)
-            download "https://deb.nodesource.com/setup_lts.x" "$node_setup" \
-                && sudo bash "$node_setup" \
-                && sudo apt-get install -y nodejs \
-                && rm -f "$node_setup" \
-                || log_warn "Node.js 安装失败，部分 LSP 功能不可用"
-        else
-            log_warn "跳过 Node.js 安装（CentOS/离线/无 sudo），部分 LSP 可能不可用"
+    # ---- 安装 Node.js（通过 nvm，用户级安装，不需要 sudo 也不加 apt 外部源）----
+    # 使用 nvm 而非 NodeSource：避免在 /etc/apt/sources.list.d/ 添加外部源，
+    # 从而防止每次 apt-get update 都去连 deb.nodesource.com 导致卡顿
+    _setup_node_via_nvm() {
+        local nvm_dir="$HOME/.nvm"
+        local nvm_init="$nvm_dir/nvm.sh"
+
+        # 检查 nvm 是否已安装
+        if [[ -s "$nvm_init" ]]; then
+            source "$nvm_init" --no-use 2>/dev/null
+            if command -v node &>/dev/null; then
+                log_ok "Node.js 已安装（$(node --version)，via nvm）"
+                return 0
+            fi
         fi
+
+        log_step "安装 nvm v${NVM_VERSION}..."
+        local nvm_install_script
+        nvm_install_script=$(mktemp)
+        download \
+            "https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh" \
+            "$nvm_install_script" \
+            || { log_warn "nvm 下载失败，跳过 Node.js 安装"; rm -f "$nvm_install_script"; return 1; }
+
+        # PROFILE=/dev/null 阻止 nvm 安装脚本自动修改 .bashrc/.zshrc（我们手动管理）
+        PROFILE=/dev/null bash "$nvm_install_script"
+        rm -f "$nvm_install_script"
+
+        # 加载 nvm 并安装最新 LTS
+        export NVM_DIR="$nvm_dir"
+        source "$nvm_init" --no-use 2>/dev/null
+        log_step "安装 Node.js LTS（最新稳定版）..."
+        nvm install --lts \
+            && nvm use --lts \
+            && nvm alias default 'lts/*' \
+            && log_ok "Node.js 安装完成（$(node --version)）" \
+            || log_warn "Node.js 安装失败，部分 LSP/npm 功能不可用"
+    }
+
+    if [[ "$IS_OFFLINE" == "false" ]]; then
+        _setup_node_via_nvm
     else
-        log_ok "Node.js 已安装（$(node --version)）"
+        log_warn "离线模式：跳过 Node.js 安装（nvm 需要网络），部分 LSP 可能不可用"
     fi
 
     # ---- 安装 LazyVim 配置 ----
