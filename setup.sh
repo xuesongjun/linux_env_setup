@@ -248,32 +248,39 @@ setup_prerequisites() {
         # ---- 切换国内镜像源（archive.ubuntu.com 在国内访问慢）----
         # 幂等：只在仍指向官方源时才替换，避免重复运行覆盖自定义镜像
         _setup_apt_mirror() {
-            local MIRROR="https://mirrors.tuna.tsinghua.edu.cn/ubuntu/"
+            local MIRROR="http://mirrors.tuna.tsinghua.edu.cn/ubuntu/"
             # Ubuntu 24.04 使用 DEB822 格式（ubuntu.sources）
             local sources_file="/etc/apt/sources.list.d/ubuntu.sources"
             # 旧格式（22.04 及以下）
             local sources_list="/etc/apt/sources.list"
 
-            if [[ -f "$sources_file" ]] \
-                && grep -q "archive.ubuntu.com" "$sources_file"; then
-                log_step "切换 apt 镜像源 → 清华 TUNA..."
+            # 检查是否需要替换：仍指向官方源，或使用了 HTTPS 镜像（改为 HTTP 更快）
+            _needs_mirror_update() {
+                local f="$1"
+                grep -qE "archive\.ubuntu\.com|security\.ubuntu\.com" "$f" \
+                    || grep -q "https://mirrors\." "$f"
+            }
+
+            if [[ -f "$sources_file" ]] && _needs_mirror_update "$sources_file"; then
+                log_step "切换 apt 镜像源 → 清华 TUNA（HTTP）..."
                 sudo cp "$sources_file" "${sources_file}.bak"
                 sudo sed -i \
-                    -e "s|http://archive.ubuntu.com/ubuntu/|${MIRROR}|g" \
-                    -e "s|http://security.ubuntu.com/ubuntu/|${MIRROR}|g" \
+                    -e "s|https\?://archive\.ubuntu\.com/ubuntu/|${MIRROR}|g" \
+                    -e "s|https\?://security\.ubuntu\.com/ubuntu/|${MIRROR}|g" \
+                    -e "s|https://mirrors\.tuna\.tsinghua\.edu\.cn/ubuntu/|${MIRROR}|g" \
                     "$sources_file"
-                log_ok "apt 镜像已切换至清华 TUNA"
-            elif [[ -f "$sources_list" ]] \
-                && grep -q "archive.ubuntu.com" "$sources_list"; then
-                log_step "切换 apt 镜像源 → 清华 TUNA（sources.list）..."
+                log_ok "apt 镜像已切换至清华 TUNA（HTTP）"
+            elif [[ -f "$sources_list" ]] && _needs_mirror_update "$sources_list"; then
+                log_step "切换 apt 镜像源 → 清华 TUNA（sources.list HTTP）..."
                 sudo cp "$sources_list" "${sources_list}.bak"
                 sudo sed -i \
-                    -e "s|http://archive.ubuntu.com/ubuntu|${MIRROR%/}|g" \
-                    -e "s|http://security.ubuntu.com/ubuntu|${MIRROR%/}|g" \
+                    -e "s|https\?://archive\.ubuntu\.com/ubuntu|${MIRROR%/}|g" \
+                    -e "s|https\?://security\.ubuntu\.com/ubuntu|${MIRROR%/}|g" \
+                    -e "s|https://mirrors\.tuna\.tsinghua\.edu\.cn/ubuntu|${MIRROR%/}|g" \
                     "$sources_list"
-                log_ok "apt 镜像已切换至清华 TUNA"
+                log_ok "apt 镜像已切换至清华 TUNA（HTTP）"
             else
-                log_ok "apt 镜像源已是国内镜像，无需修改"
+                log_ok "apt 镜像源已是国内 HTTP 镜像，无需修改"
             fi
         }
         _setup_apt_mirror
