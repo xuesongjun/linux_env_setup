@@ -1013,7 +1013,23 @@ _setup_wsl_mirrored_network() {
     fi
 
     log_ok ".wslconfig 已写入 networkingMode=mirrored"
-    log_warn "需要重启 WSL 后生效：在 PowerShell 中执行 wsl --shutdown"
+    echo ""
+    echo "  ┌─────────────────────────────────────────────────────┐"
+    echo "  │  需要重启 WSL 才能生效                               │"
+    echo "  │  重启后 localhost 代理（Clash 等）将直接可用          │"
+    echo "  └─────────────────────────────────────────────────────┘"
+    echo ""
+    local answer=""
+    read -rp "  现在重启 WSL？重启后当前终端会断开，需重新打开 [y/N] " answer
+    if [[ "${answer,,}" == "y" ]]; then
+        log_step "正在关闭 WSL..."
+        powershell.exe /c "wsl --shutdown" 2>/dev/null || true
+    else
+        echo ""
+        echo "  稍后在 PowerShell 中手动执行："
+        echo "    wsl --shutdown"
+        echo ""
+    fi
 }
 
 # ============================================================
