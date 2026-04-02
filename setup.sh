@@ -245,12 +245,40 @@ setup_prerequisites() {
     log_step "模块 1/9：基础依赖..."
 
     if [[ "$OS_TYPE" == "ubuntu" ]] && [[ "$HAS_SUDO" == "true" ]]; then
-        # 超时 10 秒/源，避免单个慢源（如 nodesource）卡住整个 update
-        sudo apt-get update -y \
-            -o Acquire::http::Timeout=10 \
-            -o Acquire::https::Timeout=10 \
-            -o APT::Update::Error-Mode=any \
-            || log_warn "apt-get update 部分源失败，继续安装"
+        # ---- 切换国内镜像源（archive.ubuntu.com 在国内访问慢）----
+        # 幂等：只在仍指向官方源时才替换，避免重复运行覆盖自定义镜像
+        _setup_apt_mirror() {
+            local MIRROR="https://mirrors.tuna.tsinghua.edu.cn/ubuntu/"
+            # Ubuntu 24.04 使用 DEB822 格式（ubuntu.sources）
+            local sources_file="/etc/apt/sources.list.d/ubuntu.sources"
+            # 旧格式（22.04 及以下）
+            local sources_list="/etc/apt/sources.list"
+
+            if [[ -f "$sources_file" ]] \
+                && grep -q "archive.ubuntu.com" "$sources_file"; then
+                log_step "切换 apt 镜像源 → 清华 TUNA..."
+                sudo cp "$sources_file" "${sources_file}.bak"
+                sudo sed -i \
+                    -e "s|http://archive.ubuntu.com/ubuntu/|${MIRROR}|g" \
+                    -e "s|http://security.ubuntu.com/ubuntu/|${MIRROR}|g" \
+                    "$sources_file"
+                log_ok "apt 镜像已切换至清华 TUNA"
+            elif [[ -f "$sources_list" ]] \
+                && grep -q "archive.ubuntu.com" "$sources_list"; then
+                log_step "切换 apt 镜像源 → 清华 TUNA（sources.list）..."
+                sudo cp "$sources_list" "${sources_list}.bak"
+                sudo sed -i \
+                    -e "s|http://archive.ubuntu.com/ubuntu|${MIRROR%/}|g" \
+                    -e "s|http://security.ubuntu.com/ubuntu|${MIRROR%/}|g" \
+                    "$sources_list"
+                log_ok "apt 镜像已切换至清华 TUNA"
+            else
+                log_ok "apt 镜像源已是国内镜像，无需修改"
+            fi
+        }
+        _setup_apt_mirror
+
+        sudo apt-get update -y
         sudo apt-get upgrade -y
 
         # 生成 en_US.UTF-8 locale（WSL2 默认未生成，导致 setlocale 警告）
