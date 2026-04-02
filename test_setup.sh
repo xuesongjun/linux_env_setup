@@ -116,6 +116,15 @@ check_search_tools() {
     check_cmd_version "fzf" "fzf" "--version"
     check_cmd_version "ripgrep (rg)" "rg" "--version"
 
+    # win32yank（WSL2 Neovim 剪贴板）
+    if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
+        if command -v win32yank.exe &>/dev/null; then
+            pass "win32yank（Neovim 剪贴板）已安装"
+        else
+            warn "win32yank 未安装，Neovim 无法访问系统剪贴板"
+        fi
+    fi
+
     # GitHub CLI
     if command -v gh &>/dev/null; then
         check_cmd_version "GitHub CLI (gh)" "gh" "--version"

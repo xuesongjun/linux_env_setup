@@ -262,7 +262,7 @@ setup_prerequisites() {
             git curl wget build-essential pkg-config
             libssl-dev zlib1g-dev libbz2-dev libreadline-dev
             libsqlite3-dev libffi-dev liblzma-dev libncurses-dev
-            ca-certificates gnupg unzip xz-utils
+            ca-certificates gnupg unzip xz-utils zip
             autoconf flex bison help2man
         )
         sudo apt-get install -y "${packages[@]}"
@@ -594,6 +594,29 @@ setup_dev_tools() {
         local gh_url="https://github.com/cli/cli/releases/download/v${GH_VERSION}/${gh_pkg}"
         _install_static_binary "$gh_url" "$gh_pkg" "gh" \
             || log_warn "gh 安装失败，可手动下载：https://github.com/cli/cli/releases"
+    fi
+
+    # ---- win32yank（WSL2 Neovim 系统剪贴板集成）----
+    if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
+        if check_cmd win32yank.exe; then
+            log_ok "win32yank 已安装"
+        else
+            log_step "安装 win32yank（Neovim WSL2 剪贴板支持）..."
+            local zip_url="https://github.com/equalsraf/win32yank/releases/latest/download/win32yank-x64.zip"
+            local tmp_zip
+            tmp_zip=$(mktemp --suffix=.zip)
+            if fetch_file "$zip_url" "$tmp_zip" "win32yank-x64.zip"; then
+                local tmp_dir
+                tmp_dir=$(mktemp -d)
+                unzip -q "$tmp_zip" -d "$tmp_dir"
+                cp "$tmp_dir/win32yank.exe" "$HOME/.local/bin/win32yank.exe"
+                chmod +x "$HOME/.local/bin/win32yank.exe"
+                rm -rf "$tmp_zip" "$tmp_dir"
+                log_ok "win32yank 安装完成"
+            else
+                log_warn "win32yank 安装失败，Neovim 剪贴板功能不可用"
+            fi
+        fi
     fi
 
     # ---- git 全局配置（只在未设置时写入） ----

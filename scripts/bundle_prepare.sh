@@ -196,6 +196,16 @@ download_binaries() {
         log_ok "已存在：$verible_pkg"
     fi
 
+    # ---- win32yank（WSL2 Neovim 剪贴板，仅 Windows 可执行文件）----
+    local win32yank_pkg="win32yank-x64.zip"
+    if [[ ! -f "$BUNDLE_DIR/$win32yank_pkg" ]]; then
+        download \
+            "https://github.com/equalsraf/win32yank/releases/latest/download/$win32yank_pkg" \
+            "$BUNDLE_DIR/$win32yank_pkg"
+    else
+        log_ok "已存在：$win32yank_pkg"
+    fi
+
     log_ok "步骤 1 完成"
 }
 
