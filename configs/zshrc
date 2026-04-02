@@ -32,7 +32,6 @@ if [[ -f "$HOME/.fzf.zsh" ]]; then
 fi
 # fzf 默认选项：使用 fd 作为文件查找后端（更快，自动忽略 .gitignore）
 if command -v fd &>/dev/null || command -v fdfind &>/dev/null; then
-    local _fd_cmd
     _fd_cmd=$(command -v fd 2>/dev/null || command -v fdfind)
     export FZF_DEFAULT_COMMAND="$_fd_cmd --type f --hidden --follow --exclude .git"
     export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
@@ -42,7 +41,7 @@ fi
 export FZF_DEFAULT_OPTS="--height=50% --layout=reverse --border --info=inline"
 
 # ---- Zsh 插件（不依赖 Oh My Zsh）----
-local plugin_dir="$HOME/.zsh"
+plugin_dir="$HOME/.zsh"
 
 # zsh-completions（需在 compinit 前加入 fpath）
 if [[ -d "$plugin_dir/zsh-completions/src" ]]; then
