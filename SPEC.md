@@ -94,7 +94,7 @@ CentOS 7/8 服务器
 | `zsh` | apt install + chsh | 源码编译 → .cshrc exec 切换 |
 | `starship` | 官方脚本安装 | bundle 静态二进制 |
 | `fzf` | git clone + install | bundle 二进制 + shell 集成脚本 |
-| `dev_tools` | apt install rg/fd | bundle 静态二进制 |
+| `dev_tools` | apt install rg/fd + gh（官方 apt 源） | bundle 静态二进制（含 gh） |
 | `neovim` | AppImage（在线） | AppImage 解压模式（bundle） |
 | `pyenv` | git clone | bundle tar.gz + 源码包 cache |
 | `eda_tools` | 全套（iverilog/Verilator/Verible/GTKWave） | 只装 Verible（静态二进制）|
@@ -163,6 +163,7 @@ FTP 取包 → 解压 → 进目录 → `./setup.sh --offline`
 | `FZF_VERSION` | 0.62.0 |
 | `RG_VERSION` | 14.1.1 |
 | `FD_VERSION` | 10.2.0 |
+| `GH_VERSION` | 2.62.0 |
 
 ---
 

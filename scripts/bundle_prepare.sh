@@ -31,6 +31,7 @@ readonly ZSH_VERSION="5.9"
 readonly FZF_VERSION="0.62.0"
 readonly RG_VERSION="14.1.1"
 readonly FD_VERSION="10.2.0"
+readonly GH_VERSION="2.62.0"
 
 # ============================================================
 # 颜色与日志
@@ -165,6 +166,16 @@ download_binaries() {
             "$BUNDLE_DIR/$fd_bundle"
     else
         log_ok "已存在：$fd_bundle"
+    fi
+
+    # ---- GitHub CLI (gh) ----
+    local gh_pkg="gh_${GH_VERSION}_linux_amd64.tar.gz"
+    if [[ ! -f "$BUNDLE_DIR/$gh_pkg" ]]; then
+        download \
+            "https://github.com/cli/cli/releases/download/v${GH_VERSION}/${gh_pkg}" \
+            "$BUNDLE_DIR/$gh_pkg"
+    else
+        log_ok "已存在：$gh_pkg"
     fi
 
     # ---- Verible（静态链接）----
@@ -342,6 +353,7 @@ verify_bundle() {
         "ripgrep-x86_64-unknown-linux-musl.tar.gz"
         "fd-x86_64-unknown-linux-musl.tar.gz"
         "verible-v${VERIBLE_VERSION}-linux-static-x86_64.tar.gz"
+        "gh_${GH_VERSION}_linux_amd64.tar.gz"
         "zsh-${ZSH_VERSION}.tar.xz"
         "Python-${PYTHON_VERSION}.tar.xz"
         "pyenv.tar.gz"

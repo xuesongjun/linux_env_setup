@@ -20,6 +20,7 @@ readonly PYTHON_VERSION="3.12.10"
 readonly NEOVIM_VERSION="0.10.4"
 readonly VERIBLE_VERSION="0.0-3793-g4294133e"
 readonly ZSH_VERSION_SRC="5.9"
+readonly GH_VERSION="2.62.0"
 
 # ============================================================
 # 路径常量（基于脚本所在目录，支持从任意目录调用）
@@ -543,6 +544,29 @@ setup_dev_tools() {
         if [[ -n "$fdfind_bin" ]] && ! check_cmd fd; then
             ln -sf "$fdfind_bin" "$HOME/.local/bin/fd"
         fi
+    fi
+
+    # ---- GitHub CLI (gh) ----
+    if check_cmd gh; then
+        log_ok "gh 已安装（$(gh --version | head -1)）"
+    elif [[ "$OS_TYPE" == "ubuntu" ]] && [[ "$HAS_SUDO" == "true" ]] && [[ "$IS_OFFLINE" == "false" ]]; then
+        # Ubuntu 在线：官方 apt 仓库
+        log_step "安装 GitHub CLI (gh)..."
+        local keyring="/usr/share/keyrings/githubcli-archive-keyring.gpg"
+        curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+            | sudo dd of="$keyring" 2>/dev/null
+        sudo chmod go+r "$keyring"
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=$keyring] https://cli.github.com/packages stable main" \
+            | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
+        sudo apt-get update -y -q
+        sudo apt-get install -y gh
+        log_ok "gh 安装完成（$(gh --version | head -1)）"
+    else
+        # CentOS / 无 sudo / 离线：预编译二进制
+        local gh_pkg="gh_${GH_VERSION}_linux_amd64.tar.gz"
+        local gh_url="https://github.com/cli/cli/releases/download/v${GH_VERSION}/${gh_pkg}"
+        _install_static_binary "$gh_url" "$gh_pkg" "gh" \
+            || log_warn "gh 安装失败，可手动下载：https://github.com/cli/cli/releases"
     fi
 
     # ---- git 全局配置（只在未设置时写入） ----

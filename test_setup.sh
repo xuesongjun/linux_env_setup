@@ -112,9 +112,16 @@ check_prompt() {
 
 check_search_tools() {
     echo ""
-    echo "─── 搜索工具 ────────────────────────────────────────"
+    echo "─── 搜索与开发工具 ──────────────────────────────────"
     check_cmd_version "fzf" "fzf" "--version"
     check_cmd_version "ripgrep (rg)" "rg" "--version"
+
+    # GitHub CLI
+    if command -v gh &>/dev/null; then
+        check_cmd_version "GitHub CLI (gh)" "gh" "--version"
+    else
+        warn "gh 未安装（可运行 ./setup.sh --only dev_tools 安装）"
+    fi
 
     # fd：Ubuntu 下命令可能是 fdfind 或通过软链接的 fd
     if command -v fd &>/dev/null; then
