@@ -102,11 +102,60 @@ fi
 # Verible 工具（已在 ~/.local/bin，无需额外配置）
 
 # ---- WSL2 特定配置 ----
-# 将 Windows 侧剪贴板集成到 Zsh（需要 clip.exe）
-if command -v clip.exe &>/dev/null; then
-    alias pbcopy='clip.exe'
-    # 粘贴：PowerShell Get-Clipboard 通过管道传入
-    alias pbpaste='powershell.exe -command "Get-Clipboard" 2>/dev/null | sed "s/\r//"'
+if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
+
+    # 剪贴板集成
+    if command -v clip.exe &>/dev/null; then
+        alias pbcopy='clip.exe'
+        alias pbpaste='powershell.exe -command "Get-Clipboard" 2>/dev/null | sed "s/\r//"'
+    fi
+
+    # 代理自动同步：从 Windows 注册表读取 Clash/系统代理设置
+    # 缓存 60 秒，避免每次开 shell 都调用 powershell.exe 带来延迟
+    _wsl_sync_proxy() {
+        local cache="$HOME/.cache/wsl_proxy"
+        local now
+        now=$(date +%s)
+
+        # 缓存未过期（60 秒内）直接加载
+        if [[ -f "$cache" ]] && (( now - $(stat -c %Y "$cache" 2>/dev/null || echo 0) < 60 )); then
+            source "$cache"
+            return
+        fi
+
+        # 读取 Windows 注册表：ProxyEnable + ProxyServer
+        local result
+        result=$(powershell.exe -NoProfile -NonInteractive -Command '
+            $s = Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings" -ErrorAction SilentlyContinue
+            if ($s.ProxyEnable -eq 1 -and $s.ProxyServer) { "1:" + $s.ProxyServer } else { "0" }
+        ' 2>/dev/null | tr -d '\r\n')
+
+        mkdir -p "$HOME/.cache"
+        if [[ "$result" == 1:* ]]; then
+            local server="${result#1:}"
+            cat > "$cache" <<EOF
+export HTTP_PROXY="http://$server"
+export HTTPS_PROXY="http://$server"
+export ALL_PROXY="socks5://$server"
+export http_proxy="http://$server"
+export https_proxy="http://$server"
+export all_proxy="socks5://$server"
+EOF
+        else
+            cat > "$cache" <<'EOF'
+unset HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy
+EOF
+        fi
+        source "$cache"
+    }
+
+    # shell 启动时自动同步一次
+    _wsl_sync_proxy
+
+    # proxy-sync：Clash 开关后手动刷新（清缓存强制重读注册表）
+    alias proxy-sync='rm -f ~/.cache/wsl_proxy && _wsl_sync_proxy \
+        && echo "Proxy: ${HTTP_PROXY:-direct connection}"'
+
 fi
 
 # ---- 本地自定义（不被 setup.sh 覆盖）----

@@ -974,6 +974,48 @@ _install_verible() {
     log_ok "Verible 安装完成"
 }
 
+# 写入 Windows 侧 .wslconfig，开启镜像网络模式
+# 三种情况：文件不存在、存在但无 [wsl2] 节、已有配置
+_setup_wsl_mirrored_network() {
+    # 获取 Windows 用户目录（.wslconfig 在 Windows 侧）
+    local win_userprofile
+    win_userprofile=$(powershell.exe -NoProfile -NonInteractive \
+        -Command '$env:USERPROFILE' 2>/dev/null | tr -d '\r')
+    if [[ -z "$win_userprofile" ]]; then
+        log_warn "无法获取 Windows 用户目录，跳过 .wslconfig 配置"
+        return 0
+    fi
+
+    local wslconfig
+    wslconfig=$(wslpath -u "$win_userprofile/.wslconfig" 2>/dev/null) || {
+        log_warn "wslpath 转换失败，跳过 .wslconfig 配置"
+        return 0
+    }
+
+    # 已配置则跳过
+    if grep -q "networkingMode=mirrored" "$wslconfig" 2>/dev/null; then
+        log_ok "WSL2 镜像网络已配置（$wslconfig）"
+        return 0
+    fi
+
+    log_step "配置 WSL2 镜像网络模式（~/.wslconfig）..."
+    backup_file "$wslconfig"
+
+    if [[ -f "$wslconfig" ]] && grep -q "^\[wsl2\]" "$wslconfig"; then
+        # 文件存在且有 [wsl2] 节：在节内追加
+        sed -i '/^\[wsl2\]/a networkingMode=mirrored' "$wslconfig"
+    elif [[ -f "$wslconfig" ]]; then
+        # 文件存在但无 [wsl2] 节：追加完整节
+        printf '\n[wsl2]\nnetworkingMode=mirrored\n' >> "$wslconfig"
+    else
+        # 文件不存在：新建
+        printf '[wsl2]\nnetworkingMode=mirrored\n' > "$wslconfig"
+    fi
+
+    log_ok ".wslconfig 已写入 networkingMode=mirrored"
+    log_warn "需要重启 WSL 后生效：在 PowerShell 中执行 wsl --shutdown"
+}
+
 # ============================================================
 # 模块 9：WezTerm 配置（仅 Ubuntu/本地场景输出）
 # ============================================================
@@ -985,26 +1027,9 @@ setup_wezterm_config() {
         return 0
     fi
 
-    # WSL2 镜像网络提示（解决 localhost 代理无法访问的问题）
+    # WSL2 镜像网络模式：自动写入 .wslconfig（解决 localhost 代理无法访问的问题）
     if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
-        local wslconfig
-        wslconfig=$(wslpath -u "$(wslvar USERPROFILE 2>/dev/null)/.wslconfig" 2>/dev/null \
-            || echo "/mnt/c/Users/${USER}/.wslconfig")
-        if ! grep -q "networkingMode=mirrored" "$wslconfig" 2>/dev/null; then
-            echo ""
-            echo "  ┌─ WSL2 代理提示 ──────────────────────────────────────────┐"
-            echo "  │ 检测到 WSL2 NAT 模式，localhost 代理（如 Clash）无法直接使用 │"
-            echo "  │ 在 Windows PowerShell 中执行以下命令开启镜像网络模式：      │"
-            echo "  │                                                            │"
-            echo "  │   Add-Content \$env:USERPROFILE\\.wslconfig \`              │"
-            echo "  │     \"[wsl2]\`nnetworkingMode=mirrored\"                     │"
-            echo "  │   wsl --shutdown                                           │"
-            echo "  │                                                            │"
-            echo "  │ 重启 WSL 后 localhost:7897 即可直接使用。                  │"
-            echo "  └────────────────────────────────────────────────────────────┘"
-        else
-            log_ok "WSL2 已配置镜像网络模式"
-        fi
+        _setup_wsl_mirrored_network
     fi
 
     local wezterm_src="$CONFIGS_DIR/wezterm.lua"
