@@ -804,6 +804,12 @@ setup_neovim() {
 
     if [[ "$IS_OFFLINE" == "false" ]]; then
         _setup_node_via_nvm
+        # 安装 nvim-lint 所需的全局 npm 工具
+        if command -v npm &>/dev/null; then
+            npm install -g jsonlint 2>/dev/null \
+                && log_ok "jsonlint 安装完成" \
+                || log_warn "jsonlint 安装失败，JSON lint 功能不可用"
+        fi
     else
         log_warn "离线模式：跳过 Node.js 安装（nvm 需要网络），部分 LSP 可能不可用"
     fi
