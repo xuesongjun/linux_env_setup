@@ -151,11 +151,7 @@ return {
           stdin = true,
         },
       },
-      -- 保存时自动格式化（去掉注释即可禁用）
-      format_on_save = {
-        timeout_ms = 3000,
-        lsp_format = "fallback",
-      },
+      -- format_on_save 由 LazyVim 通过 vim.g.autoformat 统一管理，此处不设置
     },
   },
 
